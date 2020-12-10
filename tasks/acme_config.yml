@@ -1,5 +1,18 @@
 ---
-- name: Create the default ACME account
+- name: "Create the default ACME account"
   proxmox_acme_account:
     contact: "{{ pve_acme_contact }}"
     directory: "{{ pve_acme_directory | default(omit) }}"
+
+- name: "Read ACME Domains"
+  command: "pvenode config get"
+  changed_when: false
+  register: "_acme_domain"
+
+- block:
+    - name: "Define ACME Domains"
+      command: pvenode config set --acme domains={{ ansible_fqdn }}
+
+    - name: "Register ACME Domains"
+      command: pvenode acme cert order
+  when: "ansible_fqdn not in _acme_domain.stdout"
