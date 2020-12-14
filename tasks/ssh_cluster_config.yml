@@ -77,6 +77,11 @@
       {%- set _keyfile = pve_fetch_directory + '/' + host + '/ssh_host_' + keytype + '_key.pub' -%}
       {%- set _key = ' '.join(lookup('file', _keyfile).split()[:-1]) -%}
       {{ hostvars[host].pve_cluster_ssh_addrs | join(",") }} {{ _key }}
+      {%- if pve_ssh_port != 22 %}
+      {% for addr in hostvars[host].pve_cluster_ssh_addrs %}
+      [{{ addr }}]:{{ pve_ssh_port }} {{ _key }}
+      {% endfor %}
+      {%- endif %}
       {% endfor %}
       {% endfor %}
   when:
