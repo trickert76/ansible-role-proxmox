@@ -23,3 +23,9 @@
     purge: yes
   when:
     - "pve_remove_old_kernels | bool"
+
+- name: "Run Hook"
+  include_role:
+    name: "{{ pve_postreboot_hook }}"
+  when:
+    - "pve_postreboot_hook is defined"
