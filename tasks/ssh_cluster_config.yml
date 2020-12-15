@@ -61,31 +61,34 @@
     - ssh_host_ed25519_key.pub
     - ssh_host_ecdsa_key.pub
 
-- name: Check status of known hosts file
+- name: "Check status of known hosts file"
   stat:
-    path: /etc/ssh/ssh_known_hosts
+    path: "/etc/ssh/ssh_known_hosts"
   register: _pve_known_hosts_file
 
-- name: Add every host's host keys to global known_hosts
-  blockinfile:
-    dest: /etc/ssh/ssh_known_hosts
-    create: yes
-    marker: "# {mark}: PVE host keys (managed by ansible)."
-    content: |
-      {% for host in groups[pve_group] %}
-      {% for keytype in ['rsa', 'ed25519', 'ecdsa'] %}
-      {%- set _keyfile = pve_fetch_directory + '/' + host + '/ssh_host_' + keytype + '_key.pub' -%}
-      {%- set _key = ' '.join(lookup('file', _keyfile).split()[:-1]) -%}
-      {{ hostvars[host].pve_cluster_ssh_addrs | join(",") }} {{ _key }}
-      {%- if pve_ssh_port != 22 %}
-      {% for addr in hostvars[host].pve_cluster_ssh_addrs %}
-      [{{ addr }}]:{{ pve_ssh_port }} {{ _key }}
-      {% endfor %}
-      {%- endif %}
-      {% endfor %}
-      {% endfor %}
+- name: "Add every host's host keys to global known_hosts for default ssh port"
+  known_hosts:
+    path: "/etc/ssh/ssh_known_hosts"
+    name: "{{ item[0] }}"
+    key: "{{ hostvars[item[0]].pve_cluster_ssh_addrs | join(',') }} {{ ' '.join(lookup('file', pve_fetch_directory + '/' + item[0] + '/' + item[1]).split()[:-1]) }}"
+  with_nested:
+    - "{{ groups[pve_group] }}"
+    - ['ssh_host_rsa_key.pub', 'ssh_host_ed25519_key.pub', 'ssh_host_ecdsa_key.pub']
   when:
-    - "not (_pve_known_hosts_file.stat.islnk is defined and _pve_known_hosts_file.stat.islnk)"
+    - "pve_ssh_port == 22"
+    - "not (_pve_known_hosts_file.stat.islnk is defined and _pve_known_hosts_file.stat.islnk) or (inventory_hostname == groups[pve_group][0])"
+
+- name: "Add every host's host keys to global known_hosts for none default ssh port"
+  known_hosts:
+    path: "/etc/ssh/ssh_known_hosts"
+    name: "[{{ item[0] }}]:{{ pve_ssh_port }}"
+    key: "[{{ hostvars[item[0]].pve_cluster_ssh_addrs | join(']:'+pve_ssh_port|string+',[') }}]:{{ pve_ssh_port }} {{ ' '.join(lookup('file', pve_fetch_directory + '/' + item[0] + '/' + item[1]).split()[:-1]) }}"
+  with_nested:
+    - "{{ groups[pve_group] }}"
+    - ["ssh_host_rsa_key.pub", "ssh_host_ed25519_key.pub", "ssh_host_ecdsa_key.pub"]
+  when:
+    - "pve_ssh_port != 22"
+    - "not (_pve_known_hosts_file.stat.islnk is defined and _pve_known_hosts_file.stat.islnk) or (inventory_hostname == groups[pve_group][0])"
 
 - name: Add PVE-provided ciphers to SSH client config
   lineinfile:
