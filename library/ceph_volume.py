@@ -592,6 +592,7 @@ def run_module():
 
     elif action == 'list':
         # List Ceph LVM Metadata on a device
+        changed = False
         rc, cmd, out, err = exec_command(
             module, list_osd(module, container_image))
 
@@ -656,6 +657,9 @@ def run_module():
 
     endd = datetime.datetime.now()
     delta = endd - startd
+    
+    if out and len(out) > 0:
+        out_json = json.loads(out)
 
     result = dict(
         cmd=cmd,
@@ -663,6 +667,7 @@ def run_module():
         end=str(endd),
         delta=str(delta),
         rc=rc,
+        json=out_json,
         stdout=out.rstrip('\r\n'),
         stderr=err.rstrip('\r\n'),
         changed=changed,

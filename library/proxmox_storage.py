@@ -330,7 +330,7 @@ def main():
     error = None
     result = {}
     result['state'] = storage.state
-    result['changed'] = False
+    result['changed'] = changed
 
     if storage.state == 'absent':
         if storage.exists():
@@ -345,17 +345,19 @@ def main():
                 module.exit_json(**result)
 
             error = storage.create_storage()
+            changed = False
         else:
             # modify storage (check mode is ok)
             (updated_fields,error) = storage.modify_storage()
 
             if updated_fields:
-                result['changed'] = True
+                changed = True
                 result['updated_fields'] = updated_fields
 
     if error is not None:
         module.fail_json(name=storage.name, msg=error)
 
+    result['changed'] = changed
     module.exit_json(**result)
 
 if __name__ == '__main__':

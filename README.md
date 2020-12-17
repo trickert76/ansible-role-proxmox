@@ -610,18 +610,18 @@ pve_ceph_cluster_network: '172.10.1.0/24'
 pve_ceph_osds:
   # OSD with everything on the same device
   - device: /dev/sdc
-  # OSD with block.db/WAL on another device
+  # OSD with block_db/WAL on another device
   - device: /dev/sdd
-    block.db: /dev/sdb1
+    block_db: /dev/sdb1
   # encrypted OSD with everything on the same device
   - device: /dev/sdc
     encrypted: true
   # OSD with everything on the same device marking the device class as 'ssd'.
   - device: /dev/sdc
     crush_device_class: ssd
-  # encrypted OSD with block.db/WAL on another device
+  # encrypted OSD with block_db/WAL on another device
   - device: /dev/sdd
-    block.db: /dev/sdb1
+    block_db: /dev/sdb1
     encrypted: true
 # Crush rules for different storage classes
 # By default 'type' is set to host, you can find valid types at (https://docs.ceph.com/en/latest/rados/operations/crush-map/)

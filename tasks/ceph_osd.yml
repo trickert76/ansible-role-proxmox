@@ -1,0 +1,23 @@
+# this tasks manage a single OSD
+---
+- name: "Get existing ceph volumes {{ _pve_ceph_osd_item.device }}"
+  ceph_volume:
+    action: list
+    data: "{{ _pve_ceph_osd_item.device }}"
+  register: _pve_ceph_volume_data
+
+- name: "Destroy Ceph OSD {{ _pve_ceph_osd_item.device }} before adding"
+  command: "ceph-volume lvm zap {{ _pve_ceph_osd_item.device }} --destroy"
+  register: _pve_ceph_destroy_osd
+  changed_when: "'successful' in _pve_ceph_destroy_osd.stdout"
+  when: "not (_pve_ceph_volume_data.json is defined and _pve_ceph_volume_data.json | length)"
+
+- name: "Create Ceph OSD {{ _pve_ceph_osd_item.device }}"
+  command: >-
+    pveceph osd create {{ _pve_ceph_osd_item.device }}
+    {% if "encrypted" in _pve_ceph_osd_item and _pve_ceph_osd_item["encrypted"] | bool %}--encrypted 1{% endif %}
+    {% if "block_db" in _pve_ceph_osd_item %}--journal_dev {{ _pve_ceph_osd_item["block_db"] }}{% endif %}
+    {% if "crush_device_class" in _pve_ceph_osd_item %}--crush-device-class {{ _pve_ceph_osd_item["crush_device_class"] }}{% endif %}
+  args:
+    creates: "{{ _pve_ceph_osd_item.device }}1"
+  when: "not (_pve_ceph_volume_data.json is defined and _pve_ceph_volume_data.json | length)"
