@@ -1,0 +1,68 @@
+# this tasks manages a single CephFS
+---
+- block:
+    - name: "List Ceph Filesystems"
+      command: "ceph fs ls -f json"
+      changed_when: false
+      register: _ceph_fs
+
+    - name: "Create Ceph Filesystems"
+      command: "pveceph fs create --name {{ _pve_ceph_fs.name }} --add-storage {{ _pve_ceph_fs.storage }} --pg_num {{ _pve_ceph_fs.pgs }}"
+      register: _ceph_fs_create
+      failed_when: _ceph_fs_create.stderr
+      when: "_pve_ceph_fs.name not in (_ceph_fs.stdout | from_json | map(attribute='name'))"
+
+    - name: "Get Ceph Data Filesystem pool CRUSH rules"
+      command: "ceph -f json osd pool get {{ _pve_ceph_fs.name }}_data crush_rule"
+      changed_when: false
+      register: _ceph_fs_data_rule
+
+    - name: "Set Ceph Data Filesystem pool CRUSH rules"
+      command: "ceph osd pool set {{ _pve_ceph_fs.name }}_data crush_rule {{ _pve_ceph_fs.rule }}"
+      when: "_pve_ceph_fs.rule != (_ceph_fs_data_rule.stdout | from_json).crush_rule"
+
+    - name: "Get Ceph Metadata Data Filesystem pool CRUSH rules"
+      command: "ceph -f json osd pool get {{ _pve_ceph_fs.name }}_metadata crush_rule"
+      changed_when: false
+      register: _ceph_fs_meta_rule
+
+    - name: "Set Ceph Metadata Filesystem pool CRUSH rules"
+      command: "ceph osd pool set {{ _pve_ceph_fs.name }}_metadata crush_rule {{ _pve_ceph_fs.rule }}"
+      when: "_pve_ceph_fs.rule != (_ceph_fs_data_rule.stdout | from_json).crush_rule"
+
+    - name: "Create Ceph filesystem key"
+      command: "ceph auth get-or-create client.{{ _pve_ceph_fs.name }} osd 'allow rw pool={{ _pve_ceph_fs.name }}_data' mon 'allow r' mds 'allow rw'"
+      register: _ceph_fs_auth
+      changed_when: "'added key' in _ceph_fs_auth.stdout"
+      when: "_pve_ceph_fs.mountpoint is defined"
+  when: "inventory_hostname == groups[pve_ceph_mon_group][0]"
+
+- name: "Fetch Ceph filesystem key"
+  command: "ceph auth print-key client.{{ _pve_ceph_fs.name }}"
+  args:
+    creates: "/etc/ceph/{{ _pve_ceph_fs.name }}.secret"
+  register: _ceph_fs_key
+  when: "_pve_ceph_fs.mountpoint is defined"
+
+- name: "Save Ceph filesystem key"
+  copy:
+    dest: "/etc/ceph/{{ _pve_ceph_fs.name }}.secret"
+    owner: "root"
+    group: "root"
+    mode: 0600
+    content: "{{ _ceph_fs_key.stdout }}"
+  when: "_ceph_fs_key is changed"
+
+- name: "Mount Ceph filesystems"
+  mount:
+    path: "{{ _pve_ceph_fs.mountpoint }}"
+    src: |-
+      {% for h in groups[pve_ceph_mon_group] -%}
+      {{ hostvars[h].ansible_all_ipv4_addresses | ipaddr(pve_ceph_network) | first -}}
+      {{ loop.last | ternary("", ",") -}}
+      {% endfor %}:/
+    fstype: "ceph"
+    opts: "name={{ _pve_ceph_fs.name }},secretfile=/etc/ceph/{{ _pve_ceph_fs.name }}.secret,_netdev"
+    state: "mounted"
+  when: "_pve_ceph_fs.mountpoint is defined"
+  

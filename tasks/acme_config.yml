@@ -3,9 +3,10 @@
   proxmox_acme_account:
     contact: "{{ pve_acme_contact }}"
     directory: "{{ pve_acme_directory | default(omit) }}"
+  when: "not pve_cluster_enabled | bool or (pve_cluster_enabled | bool and inventory_hostname == groups[pve_group][0])"
 
 - name: "Read ACME Domains"
-  command: "pvenode config get"
+  command: "pvenode config get -property acme"
   changed_when: false
   register: "_acme_domain"
 

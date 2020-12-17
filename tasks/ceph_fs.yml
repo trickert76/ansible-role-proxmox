@@ -1,0 +1,18 @@
+# This is an Ansible version of what "pveceph install" actually does
+---
+- name: "Enable multiple CephFS"
+  command: ceph fs flag set enable_multiple true
+  changed_when: false
+  when:
+    - "pve_ceph_fs | length > 1"
+    - "inventory_hostname == groups[pve_ceph_mon_group][0]"
+
+- name: "Manage CephFS"
+  include_tasks: ceph_createfs.yml
+  args:
+    apply:
+      tags:
+        - create_cephfs
+  loop: "{{ pve_ceph_fs | default([]) }}"
+  loop_control:
+    loop_var: _pve_ceph_fs
