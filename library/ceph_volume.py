@@ -514,7 +514,7 @@ def run_module():
         block_db_devices=dict(type='list', required=False, default=[]),
         wal_devices=dict(type='list', required=False, default=[]),
         report=dict(type='bool', required=False, default=False),
-        containerized=dict(type='str', required=False, default=False),
+        containerized=dict(type='bool', required=False, default=False),
         osd_fsid=dict(type='str', required=False),
     )
 
