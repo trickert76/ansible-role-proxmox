@@ -616,6 +616,9 @@ pve_ceph_osds:
   # encrypted OSD with everything on the same device
   - device: /dev/sdc
     encrypted: true
+  # OSD with everything on the same device marking the device class as 'ssd'.
+  - device: /dev/sdc
+    crush_device_class: ssd
   # encrypted OSD with block.db/WAL on another device
   - device: /dev/sdd
     block.db: /dev/sdb1
