@@ -514,7 +514,7 @@ def run_module():
         block_db_devices=dict(type='list', required=False, default=[]),
         wal_devices=dict(type='list', required=False, default=[]),
         report=dict(type='bool', required=False, default=False),
-        containerized=dict(type='bool', required=False, default=False),
+        containerized=dict(type='str', required=False, default=None),
         osd_fsid=dict(type='str', required=False),
     )
 
@@ -598,6 +598,7 @@ def run_module():
 
     elif action == 'inventory':
         # List storage device inventory.
+        changed = False
         rc, cmd, out, err = exec_command(
             module, list_storage_inventory(module, container_image))
 

@@ -69,12 +69,12 @@
   args:
     creates: '/var/lib/ceph/mds/ceph-{{ ansible_hostname }}'
   register: _ceph_mds_create
-  when: "inventory_hostname in groups[pve_ceph_mds_group] and pve_ceph_fs"
+  when: "inventory_hostname in groups[pve_ceph_mds_group] and pve_ceph_fs|length"
 
 - name: Wait for standby MDS
   command: ceph mds stat -f json
   register: _ceph_mds_stat
-  until: '(_ceph_mds_stat.stdout | from_json).fsmap.standbys | length > 0'
+  until: '(_ceph_mds_stat.stdout | from_json).fsmap.standbys | length'
   retries: 10
   delay: 2
   when: "_ceph_mds_create is changed"

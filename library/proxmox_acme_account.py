@@ -72,6 +72,8 @@ class ProxmoxACMEAccount(object):
         try:
             return pvesh.get("cluster/acme/account/{}".format(self.name))
         except ProxmoxShellError as e:
+            if e.status_code == 400:
+                return None
             self.module.fail_json(msg=e.message, status_code=e.status_code)
 
     def identify_tos(self):
