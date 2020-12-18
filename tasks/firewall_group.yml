@@ -1,0 +1,29 @@
+---
+- name: "Configure cluster group of rule {{ group.name }}"
+  proxmox_firewall_group:
+    name: "{{ group.name }}"
+    comment: "{{ group.comment | default(omit) }}"
+    rules: "{{ group.rules }}"
+
+- name: "Assign group of rules {{ group.name }} to cluster"
+  proxmox_firewall_rule:
+    name: "{{ group.name }}"
+    cluster: true
+  when: "group.assign_cluster | bool"
+
+- name: "Assign group of rules {{ group.name }} to hosts"
+  proxmox_firewall_rule:
+    name: "{{ group.name }}"
+    node: "{{ hostvars[_host].infrastructure.hostname }}"
+  with_items: "{{ group.assign_hosts | default([]) }}"
+  loop_control:
+    loop_var: _host
+
+- name: "Assign group of rules {{ group.name }} to vms"
+  proxmox_firewall_rule:
+    name: "{{ group.name }}"
+    node: "{{ hostvars[hostvars[_host].infrastructure.parent].infrastructure.hostname }}"
+    qemu: "{{ hostvars[_host].infrastructure.vmid }}"
+  with_items: "{{ group.assign_qemus | default([]) }}"
+  loop_control:
+    loop_var: _host

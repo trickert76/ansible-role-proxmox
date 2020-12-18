@@ -1,0 +1,22 @@
+# TODO replace set_fact with dict values
+---
+- name: "Configure Facts for group {{ ipset.group }}"
+  set_fact:
+    wan_ipv4: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.ipv4.address') }}"
+    wan_ipv6: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.ipv6.address') }}"
+    lan_ipv4: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.lan.ipv4.address') }}"
+    lan_ipv6: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.lan.ipv6.address') }}"
+    vpn_ipv4: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.vpn.ipv4_address') }}"
+    vpn_ipv6: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[*].network.vpn.ipv6_address') }}"
+    wan_ipv4_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.ipv4.address].join(`-`, [infrastructure.hostname, `wan-ipv4`])') }}"
+    wan_ipv6_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.ipv6.address].join(`-`, [infrastructure.hostname, `wan-ipv6`])') }}"
+    lan_ipv4_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.lan.ipv4.address].join(`-`, [infrastructure.hostname, `lan-ipv4`])') }}"
+    lan_ipv6_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.lan.ipv6.address].join(`-`, [infrastructure.hostname, `lan-ipv6`])') }}"
+    vpn_ipv4_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.vpn.ipv4_address].join(`-`, [infrastructure.hostname, `vpn-ipv4`])') }}"
+    vpn_ipv6_alias: "{{ groups[ipset.group] | map('extract', hostvars) | list | json_query('[?network.vpn.ipv6_address].join(`-`, [infrastructure.hostname, `vpn-ipv6`])') }}"
+
+- name: "Create ip set for {{ ipset.name }}"
+  proxmox_firewall_ipset:
+    name: "{{ ipset.name }}"
+    comment: "{{ ipset.comment | default(omit) }}"
+    entries: "{{ wan_ipv4_alias + wan_ipv6_alias + lan_ipv4_alias + lan_ipv6_alias + vpn_ipv4_alias + vpn_ipv6_alias }}"

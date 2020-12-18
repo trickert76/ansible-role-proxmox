@@ -1,1 +1,22 @@
 ---
+- name: "Manage Aliases configuration"
+  include_tasks: firewall_aliases.yml
+
+- name: "Manage IPset configuration"
+  include_tasks: firewall_ipset.yml
+  with_items: "{{ pve_firewall_ipsets | default([]) }}"
+  loop_control:
+    loop_var: ipset
+
+- name: "Manage Cluster configuration"
+  include_tasks: firewall_group.yml
+  with_items: "{{ pve_firewall_groups | default([]) }}"
+  loop_control:
+    loop_var: group
+
+# # pvesh get cluster/firewall/options
+# ┌────────┬───────┐
+# │ key    │ value │
+# ╞════════╪═══════╡
+# │ enable │ 1     │
+# └────────┴───────┘
