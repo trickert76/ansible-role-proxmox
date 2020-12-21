@@ -36,7 +36,7 @@ jobs:
           echo test, and deploy your project.
 
       - name: Use oxr463/setup-vagrant
-        uses: oxr463/setup-vagrant
+        uses: ./
         with:
           exec: |
             vagrant up
