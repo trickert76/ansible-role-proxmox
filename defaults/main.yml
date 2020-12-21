@@ -52,13 +52,16 @@ pve_manage_ssh: true
 pve_manage_firewall: false
 pve_firewall_cluster_enabled: true
 pve_firewall_group: "{{ pve_group }}"
+
+# pve_firewall_aliases:
+#   - name: xyz
+#     cidr: 1.2.3.4
+#     comment: my_host
+
 pve_firewall_ipsets:
   - name: "network-nodes"
     comment: "all nodes"
-    aliases:
-      - name: ""
-        cidr: ""
-    group: "all"
+    aliases: []
   - name: "proxmox-nodes"
     comment: "all proxmox hosts"
     group: "{{ pve_group }}"
