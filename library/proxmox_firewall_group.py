@@ -80,11 +80,14 @@ class ProxmoxFirewallGroup(object):
         self.state = module.params['state']
         self.comment = module.params['comment']
         self.rules = module.params['rules']
+        
+        for pos, rule in enumerate(self.rules, start=0):
+            rule['pos'] = pos
     
     def create_rule(self, rule):
         new_rule = {}
-        if 'pos' in rule:
-            new_rule['pos'] = rule['pos']
+        new_rule['pos'] = rule['pos']
+
         if 'action' in rule:
             new_rule['action'] = rule['action']
         else:
@@ -93,10 +96,10 @@ class ProxmoxFirewallGroup(object):
             new_rule['type'] = rule['type']
         else:
             new_rule['type'] = 'in'
-        if 'enable' in rule and bool(rule['enable']):
-            new_rule['enable'] = 1
-        else:
+        if 'enable' in rule and not bool(rule['enable']):
             new_rule['enable'] = 0
+        else:
+            new_rule['enable'] = 1
         if 'source' in rule:
             new_rule['source'] = rule['source']
         if 'dest' in rule:
@@ -113,28 +116,15 @@ class ProxmoxFirewallGroup(object):
             new_rule['comment'] = rule['comment']
         if 'log' in rule:
             new_rule['log'] = rule['log']
+        else:
+            new_rule['log'] = 'nolog'
         return new_rule
 
-    def equals_rule(self, rule1, rule2):
-      action = ('action' in rule1 and 'action' in rule2 and rule1['action'] == rule2['action']) or ('action' not in rule1 and 'action' not in rule2)
-      type = ('type' in rule1 and 'type' in rule2 and rule1['type'] == rule2['type']) or ('type' not in rule1 and 'type' not in rule2)
-      enable = ('enable' in rule1 and 'enable' in rule2 and bool(rule1['enable']) == bool(rule2['enable']))
-      source = ('source' in rule1 and 'source' in rule2 and rule1['source'] == rule2['source']) or ('source' not in rule1 and 'source' not in rule2)
-      dest = ('dest' in rule1 and 'dest' in rule2 and rule1['dest'] == rule2['dest']) or ('dest' not in rule1 and 'dest' not in rule2)
-      macro = ('macro' in rule1 and 'macro' in rule2 and rule1['macro'] == rule2['macro']) or ('macro' not in rule1 and 'macro' not in rule2)
-      proto = ('proto' in rule1 and 'proto' in rule2 and rule1['proto'] == rule2['proto']) or ('proto' not in rule1 and 'proto' not in rule2)
-      dport = ('dport' in rule1 and 'dport' in rule2 and rule1['dport'] == rule2['dport']) or ('dport' not in rule1 and 'dport' not in rule2)
-      sport = ('sport' in rule1 and 'sport' in rule2 and rule1['sport'] == rule2['sport']) or ('sport' not in rule1 and 'sport' not in rule2)
-      comment = ('comment' in rule1 and 'comment' in rule2 and rule1['comment'] == rule2['comment']) or ('comment' not in rule1 and 'comment' not in rule2)
-      log = ('log' in rule1 and 'log' in rule2 and rule1['log'] == rule2['log']) or ('log' not in rule1 and 'log' not in rule2)
-      
-      return action and type and source and dest and comment and log and (macro or (proto and (sport or dport)))
-
-    def contains_rule(self, ruleset, rule):
-      for existing_rule in ruleset:
-        if self.equals_rule(existing_rule, rule):
-          return True
-      return False
+    def get_existing_rule(self, ruleset, pos):
+        for rule in ruleset:
+            if str(rule['pos']) == str(pos):
+                return rule
+        return None
 
     def lookup(self):
         try:
@@ -145,6 +135,8 @@ class ProxmoxFirewallGroup(object):
                 positions = pvesh.get("cluster/firewall/groups/{}".format(self.name))
                 for position in positions:
                   rule = pvesh.get("cluster/firewall/groups/{}/{}".format(self.name,position['pos']))
+                  if 'digest' in rule:
+                    del rule['digest']
                   group['rules'].append(rule)
                 return group
             return None
@@ -168,7 +160,7 @@ class ProxmoxFirewallGroup(object):
         try:
             pvesh.create("cluster/firewall/groups", **new_group)
             if self.rules is not None:
-                for rule in self.rules:
+                for rule in list(reversed(self.rules)):
                   new_rule = self.create_rule(rule)
                   pvesh.create("cluster/firewall/groups/{}/".format(self.name), **new_rule)
             return (True, None)
@@ -189,19 +181,17 @@ class ProxmoxFirewallGroup(object):
             if key not in existing_group or staged_value != existing_group.get(key):
                 updated_fields.append(key)
         
-        diff = {}
-        
         if self.rules is not None and 'rules' in existing_group:
-          for rule in self.rules:
-            if not self.contains_rule(existing_group['rules'], rule):
-              updated_fields.append('rules')
-              diff['ruleA'] = rule
-              break
-          for rule in existing_group['rules']:
-            if not self.contains_rule(self.rules,rule):
-              updated_fields.append('rules')
-              diff['ruleB'] = rule
-              break
+            for rule in self.rules:
+                new_rule = self.create_rule(rule)
+                existing_rule = self.get_existing_rule(existing_group['rules'],new_rule['pos'])
+                
+                if existing_rule is None:
+                    updated_fields.append('rules')
+                    break
+                if new_rule != existing_rule:
+                    updated_fields.append('rules')
+                    break
                 
         if self.module.check_mode:
             self.module.exit_json(changed=bool(updated_fields), expected_changes=updated_fields)
@@ -213,16 +203,22 @@ class ProxmoxFirewallGroup(object):
         try:
             # no set handler defined
             # pvesh.set("cluster/firewall/groups/{}".format(self.name), **modified_group)
-
+            
             if self.rules is not None and 'rules' in existing_group:
-              for rule in self.rules:
-                if not self.contains_rule(existing_group['rules'], rule):
-                  new_rule = self.create_rule(rule)
-                  pvesh.create("cluster/firewall/groups/{}/".format(self.name), **new_rule)
-              for rule in existing_group['rules']:
-                if not self.contains_rule(self.rules,rule):
-                  pvesh.delete("cluster/firewall/groups/{}/{}".format(self.name,rule['pos']))
+                for rule in self.rules:
+                    new_rule = self.create_rule(rule)
+                    existing_rule = self.get_existing_rule(existing_group['rules'], new_rule['pos'])
+                    
+                    if existing_rule is None:
+                        pvesh.create("cluster/firewall/groups/{}/".format(self.name), **new_rule)
+                    #else:
+                        #pvesh.set("cluster/firewall/groups/{}/{}".format(self.name,new_rule['pos']))
 
+                for rule in existing_group['rules']:
+                    new_rule = self.get_existing_rule(self.rules, rule['pos'])
+                    
+                    #if new_rule is None:
+                        #pvesh.delete("cluster/firewall/groups/{}/{}".format(self.name,rule['pos']))
         except ProxmoxShellError as e:
             error = e.message
 

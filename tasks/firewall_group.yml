@@ -1,29 +1,37 @@
 ---
-- name: "Configure cluster group of rule {{ group.name }}"
+- name: "Configure cluster security group of rule {{ pve_firewall_group.name }}"
   proxmox_firewall_group:
-    name: "{{ group.name }}"
-    comment: "{{ group.comment | default(omit) }}"
-    rules: "{{ group.rules }}"
+    name: "{{ pve_firewall_group.name }}"
+    comment: "{{ pve_firewall_group.comment | default(omit) }}"
+    rules: "{{ pve_firewall_group.rules }}"
 
-- name: "Assign group of rules {{ group.name }} to cluster"
+- name: "Assign security group of rules {{ pve_firewall_group.name }} to cluster"
   proxmox_firewall_rule:
-    name: "{{ group.name }}"
+    name: "{{ pve_firewall_group.name }}"
     cluster: true
-  when: "group.assign_cluster | bool"
+  when: "pve_firewall_group.assign_cluster | bool"
 
-- name: "Assign group of rules {{ group.name }} to hosts"
+- name: "Assign security group of rules {{ pve_firewall_group.name }} to hosts"
   proxmox_firewall_rule:
-    name: "{{ group.name }}"
-    node: "{{ hostvars[_host].infrastructure.hostname }}"
-  with_items: "{{ group.assign_hosts | default([]) }}"
+    name: "{{ pve_firewall_group.name }}"
+    node: "{{ hostvars[_host].inventory_hostname_short }}"
+  with_items: "{{ groups[pve_firewall_group.assign_hosts] }}"
   loop_control:
     loop_var: _host
+  when:
+    - "pve_firewall_group.assign_hosts is defined"
+    - "pve_firewall_group.assign_vms is not defined"
 
-- name: "Assign group of rules {{ group.name }} to vms"
+- name: "Assign security group of rules {{ pve_firewall_group.name }} to VMs"
   proxmox_firewall_rule:
-    name: "{{ group.name }}"
-    node: "{{ hostvars[hostvars[_host].infrastructure.parent].infrastructure.hostname }}"
-    qemu: "{{ hostvars[_host].infrastructure.vmid }}"
-  with_items: "{{ group.assign_qemus | default([]) }}"
+    name: "{{ pve_firewall_group.name }}"
+    node: "{{ hostvars[hostvars[_host].pve_parent].inventory_hostname_short }}"
+    qemu: "{{ hostvars[_host].pve_vmid }}"
+  with_items: "{{ pve_firewall_group.assign_vms }}"
   loop_control:
     loop_var: _host
+  when:
+    - "pve_firewall_group.assign_vms is defined"
+    - "hostvars[_host].pve_vmid is defined"
+    - "hostvars[_host].pve_parent is defined"
+    

@@ -1,8 +1,8 @@
 [![Build Status](https://travis-ci.org/lae/ansible-role-proxmox.svg?branch=master)](https://travis-ci.org/lae/ansible-role-proxmox)
 [![Galaxy Role](https://img.shields.io/badge/ansible--galaxy-proxmox-blue.svg)](https://galaxy.ansible.com/lae/proxmox/)
 
-lae.proxmox
-===========
+acoby.proxmox
+=============
 
 Installs and configures a Proxmox 5.x/6.x cluster with the following features:
 
@@ -10,9 +10,18 @@ Installs and configures a Proxmox 5.x/6.x cluster with the following features:
 - Ability to create/manage groups, users, access control lists and storage
 - Ability to create or add nodes to a PVE cluster
 - Ability to setup Ceph on the nodes
+- Ability to setup Gluster on the nodes
 - IPMI watchdog support
 - BYO HTTPS certificate support
 - Ability to use either `pve-no-subscription` or `pve-enterprise` repositories
+- Ability to configure ACME and firewalls
+
+This role is based upon the forked lae.proxmox role. As a contributor to it,
+I needed some more functionality that should not be integrated into
+lae.proxmox.
+
+Also there comes another role to manage Proxmox KVMs via pvesh (instead via
+REST API).
 
 ## Quickstart
 

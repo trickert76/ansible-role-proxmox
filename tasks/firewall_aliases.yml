@@ -1,9 +1,0 @@
----
-- name: "Create all aliases"
-  proxmox_firewall_alias:
-    name: "{{ _pve_firewall_alias.name }}"
-    cidr: "{{ _pve_firewall_alias.cidr }}"
-    comment: "{{ _pve_firewall_alias.comment | default(omit) }}"
-  with_items: "{{ pve_firewall_aliases | default([]) }}"
-  loop_control:
-    loop_var: _pve_firewall_alias
