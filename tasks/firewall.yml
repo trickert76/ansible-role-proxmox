@@ -28,7 +28,7 @@
   register: _pve_firewall_cluster_status
 
 - name: "Enable Cluster Firewall"
-  command: "pvesh set cluster/firewall/options enable=1"
+  command: "pvesh set cluster/firewall/options --enable=1"
   when:
     - "pve_firewall_cluster_enabled | bool"
     - "1 == (_pve_firewall_cluster_status.stdout | from_json | json_query('enable'))"
