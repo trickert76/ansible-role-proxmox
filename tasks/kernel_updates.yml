@@ -10,6 +10,7 @@
   throttle: 1
   reboot:
     msg: "PVE kernel update detected by Ansible"
+    pre_reboot_delay: 300
     post_reboot_delay: 300
   when:
     - "pve_reboot_on_kernel_update | bool"
